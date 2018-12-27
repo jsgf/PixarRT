@@ -1,4 +1,4 @@
-use std::io::{self,Write};
+use std::io::{self, Write};
 //use std::cmp::min;
 use std::cmp::Ordering;
 use std::f32;
@@ -7,10 +7,11 @@ mod vec;
 
 use crate::vec::V;
 
+#[inline]
 fn min(a: f32, b: f32) -> f32 {
     match a.partial_cmp(&b).unwrap_or(Ordering::Equal) {
-        Ordering::Less | Ordering::Equal => a,
-        Ordering::Greater => b,
+        Ordering::Less => a,
+        Ordering::Greater | Ordering::Equal => b,
     }
 }
 
@@ -54,13 +55,7 @@ fn query_database(position: V) -> (Hit, f32) {
     for chunk in LETTERS.as_bytes().chunks(4) {
         let begin = V::from((chunk[0] as f32 - 79.0, chunk[1] as f32 - 79.0)) * 0.5;
         let e = V::from((chunk[2] as f32 - 79.0, chunk[3] as f32 - 79.0)) * 0.5 + begin * -1.0;
-        let o = f
-            + (begin
-                + e * min(
-                    -min((begin + f * -1.0) % e / (e % e), 0.0),
-                    1.0,
-                ))
-                * -1.0;
+        let o = f + (begin + e * min(-min((begin + f * -1.0) % e / (e % e), 0.0), 1.0)) * -1.0;
         distance = min(distance, o % o);
     }
     distance = distance.sqrt();
@@ -201,13 +196,35 @@ fn trace(origin: V, direction: V) -> V {
     color
 }
 
-fn main() {
-    const W: i32 = 960;
-    const H: i32 = 540;
-    const SAMPLES_COUNT: u32 = 8;
+const W: i32 = 960;
+const H: i32 = 540;
+const SAMPLES_COUNT: u32 = 8;
+const POSITION: V = V::new(-22., 5., 25.);
 
-    let position = V::from((-22., 5., 25.));
-    let goal = !(V::from((-3., 4., 0.)) + position * -1.0);
+fn pixel(x: i32, y: i32, goal: V, left: V, up: V) -> [u8; 3] {
+    let mut color = V::default();
+
+    for _ in 0..SAMPLES_COUNT {
+        color = color
+            + trace(
+                POSITION,
+                !(goal
+                    + left * ((x - W / 2) as f32 + random_val())
+                    + up * ((y - H / 2) as f32 + random_val())),
+            );
+    }
+
+    //eprintln!("x {} y {} color {:?}", x, y, color);
+
+    color = color * (1. / (SAMPLES_COUNT as f32)) + 14. / 241.;
+    let o = color + 1.0;
+    let color = V::from((color.x / o.x, color.y / o.y, color.z * o.z)) * 255.0;
+
+    [color.x as u8, color.y as u8, color.z as u8]
+}
+
+fn main() {
+    let goal = !(V::new(-3., 4., 0.) + POSITION * -1.0);
     let left = !V::from((goal.z, 0.0, -goal.x)) * (1.0 / (W as f32));
 
     let up = V::from((
@@ -221,27 +238,10 @@ fn main() {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
 
-    for y in (0..H).rev() {
-        for x in (0..W).rev() {
-            let mut color = V::default();
-
-            for _ in 0..SAMPLES_COUNT {
-                color = color
-                    + trace(
-                        position,
-                        !(goal
-                            + left * ((x - W / 2) as f32 + random_val())
-                            + up * ((y - H / 2) as f32 + random_val())),
-                    );
-            }
-
-            //eprintln!("x {} y {} color {:?}", x, y, color);
-
-            color = color * (1. / (SAMPLES_COUNT as f32)) + 14. / 241.;
-            let o = color + 1.0;
-            let color = V::from((color.x / o.x, color.y / o.y, color.z * o.z)) * 255.0;
-            let pix = [color.x as u8, color.y as u8, color.z as u8];
-            let _ = handle.write(&pix);
-        }
+    let pixels = (0..H)
+        .rev()
+        .flat_map(|y| (0..W).rev().map(move |x| pixel(x, y, goal, left, up)));
+    for pix in pixels {
+        let _ = handle.write(&pix);
     }
 }

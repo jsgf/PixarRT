@@ -7,6 +7,12 @@ pub struct V {
     pub z: f32,
 }
 
+impl V {
+    pub const fn new(x: f32, y: f32, z: f32) -> V {
+        V { x, y, z }
+    }
+}
+
 impl From<f32> for V {
     #[inline]
     fn from(f: f32) -> Self {
@@ -24,11 +30,7 @@ impl From<(f32, f32, f32)> for V {
 impl From<(f32, f32)> for V {
     #[inline]
     fn from((x, y): (f32, f32)) -> Self {
-        V {
-            x,
-            y,
-            z: 0.0,
-        }
+        V { x, y, z: 0.0 }
     }
 }
 
@@ -38,7 +40,10 @@ impl Default for V {
     }
 }
 
-impl<T> Add<T> for V where V: From<T> {
+impl<T> Add<T> for V
+where
+    V: From<T>,
+{
     type Output = V;
 
     #[inline]
@@ -52,7 +57,10 @@ impl<T> Add<T> for V where V: From<T> {
     }
 }
 
-impl<T> Mul<T> for V where V: From<T> {
+impl<T> Mul<T> for V
+where
+    V: From<T>,
+{
     type Output = V;
 
     #[inline]
@@ -66,7 +74,10 @@ impl<T> Mul<T> for V where V: From<T> {
     }
 }
 
-impl<T> Rem<T> for V where V: From<T>{
+impl<T> Rem<T> for V
+where
+    V: From<T>,
+{
     type Output = f32;
 
     #[inline]
