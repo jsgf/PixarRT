@@ -60,7 +60,7 @@ float QueryDatabase(Vec position, int &hitType) {
           "UOY_" "Y_]O" "WW[W"         // A
           "aOa_" "aWeW" "a_e_" "cWiO"; // R (without curve)
 
-  for (int i = 0; i < sizeof(letters); i += 4) {
+  for (int i = 0; i < sizeof(letters) - 4; i += 4) {
     Vec begin = Vec(letters[i] - 79, letters[i + 1] - 79) * .5;
     Vec e = Vec(letters[i + 2] - 79, letters[i + 3] - 79) * .5 + begin * -1;
     Vec o = f + (begin + e * min(-min((begin + f * -1) % e / (e % e),
