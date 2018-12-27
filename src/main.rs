@@ -1,17 +1,24 @@
 use std::io::{self,Write};
-use std::cmp::min;
+//use std::cmp::min;
+use std::cmp::Ordering;
+use std::f32;
 
-mod float;
 mod vec;
 
-use crate::float::Float;
 use crate::vec::V;
+
+fn min(a: f32, b: f32) -> f32 {
+    match a.partial_cmp(&b).unwrap_or(Ordering::Equal) {
+        Ordering::Less | Ordering::Equal => a,
+        Ordering::Greater => b,
+    }
+}
 
 fn random_val() -> f32 {
     rand::random()
 }
 
-fn box_test(position: V, lower_left: V, upper_right: V) -> Float {
+fn box_test(position: V, lower_left: V, upper_right: V) -> f32 {
     let lower_left = position + lower_left * -1.0;
     let upper_right = upper_right + position * -1.0;
     -min(
@@ -31,10 +38,10 @@ enum Hit {
     Sun,
 }
 
-fn query_database(position: V) -> (Hit, Float) {
-    let mut distance = Float::MAX;
+fn query_database(position: V) -> (Hit, f32) {
+    let mut distance = f32::MAX;
     let mut f = position;
-    f.z = Float::ZERO;
+    f.z = 0.0;
 
     const LETTERS: &str = concat!(
         "5O5_", "5W9W", "5_9_", // P (without curve)
@@ -50,8 +57,8 @@ fn query_database(position: V) -> (Hit, Float) {
         let o = f
             + (begin
                 + e * min(
-                    -min((begin + f * -1.0) % e / (e % e), Float::ZERO),
-                    Float::ONE,
+                    -min((begin + f * -1.0) % e / (e % e), 0.0),
+                    1.0,
                 ))
                 * -1.0;
         distance = min(distance, o % o);
@@ -67,9 +74,9 @@ fn query_database(position: V) -> (Hit, Float) {
                 ((o % o).sqrt() - 2.0).abs()
             } else {
                 o.y += if o.y > 0.0 {
-                    Float::from(-2.0)
+                    f32::from(-2.0)
                 } else {
-                    Float::from(2.0)
+                    f32::from(2.0)
                 };
                 (o % o).sqrt()
             },
@@ -103,7 +110,7 @@ fn query_database(position: V) -> (Hit, Float) {
         hit = Hit::Wall;
     }
 
-    let sun = Float::from(19.9) - position.y;
+    let sun = f32::from(19.9) - position.y;
     if sun < distance {
         distance = sun;
         hit = Hit::Sun;
@@ -117,7 +124,7 @@ fn query_database(position: V) -> (Hit, Float) {
 fn ray_marching(origin: V, direction: V) -> (Hit, V, V) {
     let mut no_hit_count = 0;
 
-    let mut total_d = Float::ZERO;
+    let mut total_d = 0.0;
 
     while total_d < 100.0 {
         let pos = origin + direction * total_d;
@@ -165,11 +172,11 @@ fn trace(origin: V, direction: V) -> V {
                 let c = random_val();
                 let s = (1.0 - c).sqrt();
                 let g = normal.z.signum();
-                let u = Float::from(-1.0) / (g + normal.z);
+                let u = f32::from(-1.0) / (g + normal.z);
                 let v = normal.x * normal.y * u;
                 direction = V::from((v, g + normal.y * normal.y * u, -normal.y)) * (p.cos() * s)
                     + V::from((
-                        Float::from(1.0) + g * normal.x * normal.x * u,
+                        f32::from(1.0) + g * normal.x * normal.x * u,
                         g * v,
                         -g * normal.x,
                     )) * (p.sin() * s)
@@ -201,7 +208,7 @@ fn main() {
 
     let position = V::from((-22., 5., 25.));
     let goal = !(V::from((-3., 4., 0.)) + position * -1.0);
-    let left = !V::from((goal.z, Float::ZERO, -goal.x)) * (1.0 / (W as f32));
+    let left = !V::from((goal.z, 0.0, -goal.x)) * (1.0 / (W as f32));
 
     let up = V::from((
         goal.y * left.z - goal.z * left.y,
@@ -233,7 +240,7 @@ fn main() {
             color = color * (1. / (SAMPLES_COUNT as f32)) + 14. / 241.;
             let o = color + 1.0;
             let color = V::from((color.x / o.x, color.y / o.y, color.z * o.z)) * 255.0;
-            let pix = [u8::from(color.x), u8::from(color.y), u8::from(color.z)];
+            let pix = [color.x as u8, color.y as u8, color.z as u8];
             let _ = handle.write(&pix);
         }
     }

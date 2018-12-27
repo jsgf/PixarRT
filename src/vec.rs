@@ -1,57 +1,34 @@
-use crate::float::Float;
 use std::ops::{Add, Mul, Not, Rem};
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct V {
-    pub x: Float,
-    pub y: Float,
-    pub z: Float,
-}
-
-impl From<Float> for V {
-    #[inline]
-    fn from(f: Float) -> Self {
-        V { x: f, y: f, z: f }
-    }
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
 }
 
 impl From<f32> for V {
     #[inline]
     fn from(f: f32) -> Self {
-        let f = Float::from(f);
         V { x: f, y: f, z: f }
-    }
-}
-
-impl From<(Float, Float, Float)> for V {
-    #[inline]
-    fn from((x, y, z): (Float, Float, Float)) -> Self {
-        V { x, y, z }
     }
 }
 
 impl From<(f32, f32, f32)> for V {
     #[inline]
     fn from((x, y, z): (f32, f32, f32)) -> Self {
-        V::from((Float::from(x), Float::from(y), Float::from(z)))
-    }
-}
-
-impl From<(Float, Float)> for V {
-    #[inline]
-    fn from((x, y): (Float, Float)) -> Self {
-        V {
-            x,
-            y,
-            z: Float::ZERO,
-        }
+        V { x, y, z }
     }
 }
 
 impl From<(f32, f32)> for V {
     #[inline]
     fn from((x, y): (f32, f32)) -> Self {
-        V::from((Float::from(x), Float::from(y), Float::ZERO))
+        V {
+            x,
+            y,
+            z: 0.0,
+        }
     }
 }
 
@@ -90,10 +67,10 @@ impl<T> Mul<T> for V where V: From<T> {
 }
 
 impl<T> Rem<T> for V where V: From<T>{
-    type Output = Float;
+    type Output = f32;
 
     #[inline]
-    fn rem(self, other: T) -> Float {
+    fn rem(self, other: T) -> f32 {
         let other = V::from(other);
         self.x * other.x + self.y * other.y + self.z * other.z
     }
@@ -104,6 +81,6 @@ impl Not for V {
 
     #[inline]
     fn not(self) -> V {
-        self * V::from(Float::ONE / (self % self).sqrt())
+        self * V::from(1.0 / (self % self).sqrt())
     }
 }
