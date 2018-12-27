@@ -77,7 +77,7 @@ float QueryDatabase(Vec position, int &hitType) {
     Vec o = f + curves[i] * -1;
     distance = min(distance,
                    o.x > 0 ? fabsf(sqrtf(o % o) - 2)
-                           : (o.y += o.y > 0 ? -2 : 2, sqrtf(o % o))
+                           : (o.y += (o.y > 0 ? -2 : 2) , sqrtf(o % o))
                );
   }
   distance = powf(powf(distance, 8) + powf(position.z, 8), .125) - .5;
@@ -115,14 +115,16 @@ int RayMarching(Vec origin, Vec direction, Vec &hitPos, Vec &hitNorm) {
   float d; // distance from closest object in world.
 
   // Signed distance marching
-  for (float total_d=0; total_d < 100; total_d += d)
+  for (float total_d=0; total_d < 100; total_d += d) {
     if ((d = QueryDatabase(hitPos = origin + direction * total_d, hitType)) < .01
-            || ++noHitCount > 99)
+            || ++noHitCount > 99) {
       return hitNorm =
          !Vec(QueryDatabase(hitPos + Vec(.01, 0), noHitCount) - d,
               QueryDatabase(hitPos + Vec(0, .01), noHitCount) - d,
               QueryDatabase(hitPos + Vec(0, 0, .01), noHitCount) - d)
          , hitType; // Weird return statement where a variable is also updated.
+      }
+  }
   return 0;
 }
 
@@ -195,5 +197,4 @@ int main() {
       printf("%c%c%c", (int) color.x, (int) color.y, (int) color.z);
     }
 }// Andrew Kensler
-
 
