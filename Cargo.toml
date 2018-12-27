@@ -1,0 +1,11 @@
+[package]
+name = "PixarRT"
+version = "0.1.0"
+authors = ["Jeremy Fitzhardinge <jeremy@goop.org>"]
+edition = "2018"
+
+[dependencies]
+rand = "*"
+
+[profile.release]
+debug = true
