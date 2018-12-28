@@ -1,6 +1,4 @@
 use std::io::{self, Write};
-//use std::cmp::min;
-use std::cmp::Ordering;
 use std::f32;
 
 mod vec;
@@ -9,9 +7,10 @@ use crate::vec::V;
 
 #[inline]
 fn min(a: f32, b: f32) -> f32 {
-    match a.partial_cmp(&b).unwrap_or(Ordering::Equal) {
-        Ordering::Less => a,
-        Ordering::Greater | Ordering::Equal => b,
+    if a < b {
+        a
+    } else {
+        b
     }
 }
 
