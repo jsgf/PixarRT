@@ -1,5 +1,7 @@
-use std::io::{self, Write};
 use std::f32;
+use std::io::{self, BufWriter, Write};
+
+use rayon::prelude::*;
 
 mod vec;
 
@@ -197,7 +199,7 @@ fn trace(origin: V, direction: V) -> V {
 
 const W: i32 = 960;
 const H: i32 = 540;
-const SAMPLES_COUNT: u32 = 8;
+const SAMPLES_COUNT: u32 = 16;
 const POSITION: V = V::new(-22., 5., 25.);
 
 fn pixel(x: i32, y: i32, goal: V, left: V, up: V) -> [u8; 3] {
@@ -235,11 +237,15 @@ fn main() {
     print!("P6 {} {} 255 ", W, H);
 
     let stdout = io::stdout();
-    let mut handle = stdout.lock();
+    let mut handle = BufWriter::new(stdout.lock());
 
-    let pixels = (0..H)
-        .rev()
-        .flat_map(|y| (0..W).rev().map(move |x| pixel(x, y, goal, left, up)));
+    let coords = (0..H)
+        .into_par_iter()
+        .flat_map(|y| (0..W).into_par_iter().map(move |x| (W - x, H - y)));
+    let pixels: Vec<_> = coords
+        .map(move |(x, y)| pixel(x, y, goal, left, up))
+        .collect();
+
     for pix in pixels {
         let _ = handle.write(&pix);
     }
