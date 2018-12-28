@@ -202,6 +202,7 @@ fn trace(origin: V, direction: V) -> V {
 
 const W: i32 = 960;
 const H: i32 = 540;
+const SAMPLES: u32 = 1024;
 const POSITION: V = V::new(-22., 5., 25.);
 
 fn sample(x: i32, y: i32, pos: V, goal: V, left: V, up: V) -> V {
@@ -239,24 +240,25 @@ fn main() {
 
     let mut frame: Vec<_> = coords().map(|_| V::default()).collect();
 
-    for s in 1..=32 {
-        let start = Instant::now();
-
+    let start = Instant::now();
+    for s in 1..=SAMPLES {
         let pixels: Vec<_> = coords()
             .map(move |(x, y)| sample(x, y, POSITION, goal, left, up))
             .collect();
 
         frame.par_iter_mut().zip(pixels).for_each(|(f, p)| *f += p);
 
-        let file = File::create(format!("out-{}.ppm", s)).expect("create failed");
-        let mut handle = BufWriter::new(file);
+        if s.is_power_of_two() {
+            let file = File::create(format!("out-{}.ppm", s)).expect("create failed");
+            let mut handle = BufWriter::new(file);
 
-        println!("Sample {} took {:?}", s, start.elapsed());
+            println!("Sample {} took {:?}", s, start.elapsed());
 
-        let _ = write!(handle, "P6 {} {} 255 ", W, H);
+            let _ = write!(handle, "P6 {} {} 255 ", W, H);
 
-        for pix in frame.iter().map(|pix| tone_map(s, *pix)) {
-            let _ = handle.write(&pix);
+            for pix in frame.iter().map(|pix| tone_map(s, *pix)) {
+                let _ = handle.write(&pix);
+            }
         }
     }
 } // Andrew Kensler
