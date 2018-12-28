@@ -1,8 +1,9 @@
 #![warn(clippy::all)]
 
 use std::f32;
-use std::io::{ BufWriter, Write};
 use std::fs::File;
+use std::io::{BufWriter, Write};
+use std::time::Instant;
 
 use rayon::prelude::*;
 
@@ -28,10 +29,10 @@ fn box_test(position: V, lower_left: V, upper_right: V) -> f32 {
     let upper_right = upper_right + position * -1.0;
     -min(
         min(
-            min(lower_left.x, upper_right.x),
-            min(lower_left.y, upper_right.y),
+            min(lower_left.x(), upper_right.x()),
+            min(lower_left.y(), upper_right.y()),
         ),
-        min(lower_left.z, upper_right.z),
+        min(lower_left.z(), upper_right.z()),
     )
 }
 
@@ -44,9 +45,7 @@ enum Hit {
 }
 
 fn query_database(position: V) -> (Hit, f32) {
-    let mut distance = f32::MAX;
-    let mut f = position;
-    f.z = 0.0;
+    let f = V::new(position.x(), position.y(), 0.0);
 
     const LETTERS: &str = concat!(
         "5O5_", "5W9W", "5_9_", // P (without curve)
@@ -56,29 +55,41 @@ fn query_database(position: V) -> (Hit, f32) {
         "aOa_", "aWeW", "a_e_", "cWiO" // R (without curve)
     );
 
-    for chunk in LETTERS.as_bytes().chunks(4) {
-        let begin = V::from((f32::from(chunk[0]) - 79.0, f32::from(chunk[1]) - 79.0)) * 0.5;
-        let e =
-            V::from((f32::from(chunk[2]) - 79.0, f32::from(chunk[3]) - 79.0)) * 0.5 + begin * -1.0;
-        let o = f + (begin + e * min(-min((begin + f * -1.0) % e / (e % e), 0.0), 1.0)) * -1.0;
-        distance = min(distance, o % o);
+    fn l(v: u8) -> f32 {
+        f32::from(v) - 79.0
     }
-    distance = distance.sqrt();
 
-    let curves = [V::from((-11., 6.)), V::from((11., 6.))];
-    for c in curves.iter().cloned() {
-        let mut o = f + c * -1.0;
+    let mut distance = LETTERS
+        .as_bytes()
+        .chunks_exact(4)
+        .map(|chunk| {
+            (
+                V::from((l(chunk[0]), l(chunk[1]))) * 0.5,
+                V::from((l(chunk[2]), l(chunk[3]))) * 0.5,
+            )
+        })
+        .map(|(begin, end)| (begin, end + begin * -1.0))
+        .map(|(begin, e)| {
+            let o = f + (begin + e * min(-min((begin + f * -1.0) % e / (e % e), 0.0), 1.0)) * -1.0;
+            o % o
+        })
+        .fold(f32::MAX, min)
+        .sqrt();
+
+    let curves = &[V::from((-11., 6.)), V::from((11., 6.))];
+    for c in curves {
+        let mut o = f + *c * -1.0;
         distance = min(
             distance,
-            if o.x > 0.0 {
+            if o.x() > 0.0 {
                 ((o % o).sqrt() - 2.0).abs()
             } else {
-                o.y += if o.y > 0.0 { (-2.0) } else { (2.0) };
+                *o.y_mut() += if o.y() > 0.0 { -2.0 } else { 2.0 };
                 (o % o).sqrt()
             },
         );
     }
-    distance = (distance.powf(8.0) + position.z.powf(8.0)).powf(0.125) - 0.5;
+    distance = (distance.powf(8.0) + position.z().powf(8.0)).powf(0.125) - 0.5;
     let mut hit = Hit::Letter;
 
     let roomdist = min(
@@ -87,7 +98,7 @@ fn query_database(position: V) -> (Hit, f32) {
             box_test(position, V::new(-25., 17., -25.), V::new(25., 20., 25.)),
         ),
         box_test(
-            V::new(position.x.abs() % 8., position.y, position.z),
+            V::new(position.x().abs() % 8., position.y(), position.z()),
             V::new(1.5, 18.5, -25.),
             V::new(6.5, 20., 25.),
         ),
@@ -98,7 +109,7 @@ fn query_database(position: V) -> (Hit, f32) {
         hit = Hit::Wall;
     }
 
-    let sun = (19.9) - position.y;
+    let sun = 19.9 - position.y();
     if sun < distance {
         distance = sun;
         hit = Hit::Sun;
@@ -159,12 +170,15 @@ fn trace(origin: V, direction: V) -> V {
                 let p = 6.283_185 * random_val();
                 let c = random_val();
                 let s = (1.0 - c).sqrt();
-                let g = normal.z.signum();
-                let u = -1.0 / (g + normal.z);
-                let v = normal.x * normal.y * u;
-                direction = V::new(v, g + normal.y * normal.y * u, -normal.y) * (p.cos() * s)
-                    + V::new(1.0 + g * normal.x * normal.x * u, g * v, -g * normal.x)
-                        * (p.sin() * s)
+                let g = normal.z().signum();
+                let u = -1.0 / (g + normal.z());
+                let v = normal.x() * normal.y() * u;
+                direction = V::new(v, g + normal.y() * normal.y() * u, -normal.y()) * (p.cos() * s)
+                    + V::new(
+                        1.0 + g * normal.x() * normal.x() * u,
+                        g * v,
+                        -g * normal.x(),
+                    ) * (p.sin() * s)
                     + normal * c.sqrt();
                 origin = sampled_position + direction * 0.1;
                 attenuation *= 0.2;
@@ -205,9 +219,9 @@ fn tone_map(samples: u32, color: V) -> [u8; 3] {
 
     color = color * (1. / (samples as f32)) + 14. / 241.;
     let o = color + 1.0;
-    let color = V::new(color.x / o.x, color.y / o.y, color.z * o.z) * 255.0;
+    let color = V::new(color.x() / o.x(), color.y() / o.y(), color.z() / o.z()) * 255.0;
 
-    [color.x as u8, color.y as u8, color.z as u8]
+    [color.x() as u8, color.y() as u8, color.z() as u8]
 }
 
 fn coords() -> impl ParallelIterator<Item = (i32, i32)> {
@@ -219,18 +233,14 @@ fn coords() -> impl ParallelIterator<Item = (i32, i32)> {
 fn main() {
     // These are really constants, but Rust constfn can't deal with them yet.
     let goal = !(V::new(-3., 4., 0.) + POSITION * -1.0);
-    let left = !V::new(goal.z, 0.0, -goal.x) * (1.0 / (W as f32));
+    let left = !V::new(goal.z(), 0.0, -goal.x()) * (1.0 / (W as f32));
     // Cross-product to get the up vector
-    let up = V::new(
-        goal.y * left.z - goal.z * left.y,
-        goal.z * left.x - goal.x * left.z,
-        goal.x * left.y - goal.y * left.x,
-    );
+    let up = goal.cross(left);
 
     let mut frame: Vec<_> = coords().map(|_| V::default()).collect();
 
     for s in 1..=32 {
-        println!("Sample {}", s);
+        let start = Instant::now();
 
         let pixels: Vec<_> = coords()
             .map(move |(x, y)| sample(x, y, POSITION, goal, left, up))
@@ -240,6 +250,8 @@ fn main() {
 
         let file = File::create(format!("out-{}.ppm", s)).expect("create failed");
         let mut handle = BufWriter::new(file);
+
+        println!("Sample {} took {:?}", s, start.elapsed());
 
         let _ = write!(handle, "P6 {} {} 255 ", W, H);
 

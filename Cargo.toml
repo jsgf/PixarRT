@@ -10,4 +10,5 @@ rayon = "1.0.3"
 
 [profile.release]
 debug = true
-lto = true
+# LTO seems much *slower*
+#lto = true

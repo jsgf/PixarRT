@@ -1,36 +1,75 @@
 use std::ops::{Add, AddAssign, Mul, MulAssign, Not, Rem};
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
-pub struct V {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
-}
+pub struct V([f32; 4]);
 
 impl V {
+    #[inline]
     pub const fn new(x: f32, y: f32, z: f32) -> V {
-        V { x, y, z }
+        V([x, y, z, 0.0])
+    }
+
+    #[inline]
+    pub const fn x(&self) -> f32 {
+        self.0[0]
+    }
+    #[inline]
+    pub const fn y(&self) -> f32 {
+        self.0[1]
+    }
+    #[inline]
+    pub const fn z(&self) -> f32 {
+        self.0[2]
+    }
+
+    #[inline]
+    #[allow(dead_code)]
+    pub fn x_mut(&mut self) -> &mut f32 {
+        &mut self.0[0]
+    }
+    #[inline]
+    pub fn y_mut(&mut self) -> &mut f32 {
+        &mut self.0[1]
+    }
+    #[inline]
+    #[allow(dead_code)]
+    pub fn z_mut(&mut self) -> &mut f32 {
+        &mut self.0[2]
+    }
+
+    pub fn cross<T>(self, rhs: T) -> Self
+    where
+        V: From<T>,
+    {
+        let rhs = V::from(rhs);
+
+        V([
+            self.0[1] * rhs.0[2] - self.0[2] * rhs.0[1],
+            self.0[2] * rhs.0[0] - self.0[0] * rhs.0[2],
+            self.0[0] * rhs.0[1] - self.0[1] * rhs.0[0],
+            0.0,
+        ])
     }
 }
 
 impl From<f32> for V {
     #[inline]
     fn from(f: f32) -> Self {
-        V { x: f, y: f, z: f }
+        V([f, f, f, 0.0])
     }
 }
 
 impl From<(f32, f32, f32)> for V {
     #[inline]
     fn from((x, y, z): (f32, f32, f32)) -> Self {
-        V { x, y, z }
+        V::new(x, y, z)
     }
 }
 
 impl From<(f32, f32)> for V {
     #[inline]
     fn from((x, y): (f32, f32)) -> Self {
-        V { x, y, z: 0.0 }
+        V::new(x, y, 0.0)
     }
 }
 
@@ -49,11 +88,12 @@ where
     #[inline]
     fn add(self, other: T) -> V {
         let other = V::from(other);
-        V {
-            x: self.x + other.x,
-            y: self.y + other.y,
-            z: self.z + other.z,
-        }
+        V([
+            self.0[0] + other.0[0],
+            self.0[1] + other.0[1],
+            self.0[2] + other.0[2],
+            self.0[3] + other.0[3],
+        ])
     }
 }
 
@@ -75,11 +115,12 @@ where
     #[inline]
     fn mul(self, other: T) -> V {
         let other = V::from(other);
-        V {
-            x: self.x * other.x,
-            y: self.y * other.y,
-            z: self.z * other.z,
-        }
+        V([
+            self.0[0] * other.0[0],
+            self.0[1] * other.0[1],
+            self.0[2] * other.0[2],
+            self.0[3] * other.0[3],
+        ])
     }
 }
 
@@ -100,8 +141,9 @@ where
 
     #[inline]
     fn rem(self, other: T) -> f32 {
-        let other = V::from(other);
-        self.x * other.x + self.y * other.y + self.z * other.z
+        let m = self * other;
+
+        m.0[0] + m.0[1] + m.0[2]
     }
 }
 
