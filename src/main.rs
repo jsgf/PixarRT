@@ -1,7 +1,8 @@
 #![warn(clippy::all)]
 
 use std::f32;
-use std::io::{self, BufWriter, Write};
+use std::io::{ BufWriter, Write};
+use std::fs::File;
 
 use rayon::prelude::*;
 
@@ -151,7 +152,7 @@ fn trace(origin: V, direction: V) -> V {
             Hit::Letter => {
                 direction = direction + normal * (normal % direction * -2.0);
                 origin = sampled_position + direction * 0.1;
-                attenuation = attenuation * 0.2;
+                attenuation *= 0.2;
             }
             Hit::Wall => {
                 let incidence = normal % light_direction;
@@ -166,17 +167,17 @@ fn trace(origin: V, direction: V) -> V {
                         * (p.sin() * s)
                     + normal * c.sqrt();
                 origin = sampled_position + direction * 0.1;
-                attenuation = attenuation * 0.2;
+                attenuation *= 0.2;
                 if incidence > 0.0 {
                     let (h, _p, _n) =
                         ray_marching(sampled_position + normal * 0.1, light_direction);
                     if h == Hit::Sun {
-                        color = color + attenuation * V::new(500., 400., 100.) * incidence;
+                        color += attenuation * V::new(500., 400., 100.) * incidence;
                     }
                 }
             }
             Hit::Sun => {
-                color = color + attenuation * V::new(50., 80., 100.);
+                color += attenuation * V::new(50., 80., 100.);
                 break;
             }
         }
@@ -187,7 +188,6 @@ fn trace(origin: V, direction: V) -> V {
 
 const W: i32 = 960;
 const H: i32 = 540;
-const SAMPLES_COUNT: u32 = 64;
 const POSITION: V = V::new(-22., 5., 25.);
 
 fn sample(x: i32, y: i32, pos: V, goal: V, left: V, up: V) -> V {
@@ -210,13 +210,10 @@ fn tone_map(samples: u32, color: V) -> [u8; 3] {
     [color.x as u8, color.y as u8, color.z as u8]
 }
 
-fn pixel(x: i32, y: i32, pos: V, goal: V, left: V, up: V) -> [u8; 3] {
-    let col = (0..SAMPLES_COUNT)
+fn coords() -> impl ParallelIterator<Item = (i32, i32)> {
+    (0..H)
         .into_par_iter()
-        .map(|_| sample(x, y, pos, goal, left, up))
-        .reduce(V::default, |state, new| state + new);
-
-    tone_map(SAMPLES_COUNT, col)
+        .flat_map(|y| (0..W).into_par_iter().map(move |x| (W - x - 1, H - y - 1)))
 }
 
 fn main() {
@@ -230,19 +227,24 @@ fn main() {
         goal.x * left.y - goal.y * left.x,
     );
 
-    let stdout = io::stdout();
-    let mut handle = BufWriter::new(stdout.lock());
+    let mut frame: Vec<_> = coords().map(|_| V::default()).collect();
 
-    let _ = write!(handle, "P6 {} {} 255 ", W, H);
+    for s in 1..=32 {
+        println!("Sample {}", s);
 
-    let coords = (0..H)
-        .into_par_iter()
-        .flat_map(|y| (0..W).into_par_iter().map(move |x| (W - x, H - y)));
-    let pixels: Vec<_> = coords
-        .map(move |(x, y)| pixel(x, y, POSITION, goal, left, up))
-        .collect();
+        let pixels: Vec<_> = coords()
+            .map(move |(x, y)| sample(x, y, POSITION, goal, left, up))
+            .collect();
 
-    for pix in pixels {
-        let _ = handle.write(&pix);
+        frame.par_iter_mut().zip(pixels).for_each(|(f, p)| *f += p);
+
+        let file = File::create(format!("out-{}.ppm", s)).expect("create failed");
+        let mut handle = BufWriter::new(file);
+
+        let _ = write!(handle, "P6 {} {} 255 ", W, H);
+
+        for pix in frame.iter().map(|pix| tone_map(s, *pix)) {
+            let _ = handle.write(&pix);
+        }
     }
 } // Andrew Kensler

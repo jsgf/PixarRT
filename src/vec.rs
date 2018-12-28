@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul, Not, Rem};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Not, Rem};
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct V {
@@ -57,6 +57,15 @@ where
     }
 }
 
+impl<T> AddAssign<T> for V
+where
+    V: From<T>,
+{
+    fn add_assign(&mut self, rhs: T) {
+        *self = self.add(rhs);
+    }
+}
+
 impl<T> Mul<T> for V
 where
     V: From<T>,
@@ -71,6 +80,15 @@ where
             y: self.y * other.y,
             z: self.z * other.z,
         }
+    }
+}
+
+impl<T> MulAssign<T> for V
+where
+    V: From<T>,
+{
+    fn mul_assign(&mut self, rhs: T) {
+        *self = self.mul(rhs);
     }
 }
 
