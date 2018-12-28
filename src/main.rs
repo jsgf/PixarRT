@@ -1,3 +1,5 @@
+#![warn(clippy::all)]
+
 use std::f32;
 use std::io::{self, BufWriter, Write};
 
@@ -54,8 +56,9 @@ fn query_database(position: V) -> (Hit, f32) {
     );
 
     for chunk in LETTERS.as_bytes().chunks(4) {
-        let begin = V::from((chunk[0] as f32 - 79.0, chunk[1] as f32 - 79.0)) * 0.5;
-        let e = V::from((chunk[2] as f32 - 79.0, chunk[3] as f32 - 79.0)) * 0.5 + begin * -1.0;
+        let begin = V::from((f32::from(chunk[0]) - 79.0, f32::from(chunk[1]) - 79.0)) * 0.5;
+        let e =
+            V::from((f32::from(chunk[2]) - 79.0, f32::from(chunk[3]) - 79.0)) * 0.5 + begin * -1.0;
         let o = f + (begin + e * min(-min((begin + f * -1.0) % e / (e % e), 0.0), 1.0)) * -1.0;
         distance = min(distance, o % o);
     }
@@ -69,11 +72,7 @@ fn query_database(position: V) -> (Hit, f32) {
             if o.x > 0.0 {
                 ((o % o).sqrt() - 2.0).abs()
             } else {
-                o.y += if o.y > 0.0 {
-                    f32::from(-2.0)
-                } else {
-                    f32::from(2.0)
-                };
+                o.y += if o.y > 0.0 { (-2.0) } else { (2.0) };
                 (o % o).sqrt()
             },
         );
@@ -83,21 +82,13 @@ fn query_database(position: V) -> (Hit, f32) {
 
     let roomdist = min(
         -min(
-            box_test(
-                position,
-                V::from((-30., -0.5, -30.)),
-                V::from((30., 18., 30.)),
-            ),
-            box_test(
-                position,
-                V::from((-25., 17., -25.)),
-                V::from((25., 20., 25.)),
-            ),
+            box_test(position, V::new(-30., -0.5, -30.), V::new(30., 18., 30.)),
+            box_test(position, V::new(-25., 17., -25.), V::new(25., 20., 25.)),
         ),
         box_test(
-            V::from((position.x.abs() % 8., position.y, position.z)),
-            V::from((1.5, 18.5, -25.)),
-            V::from((6.5, 20., 25.)),
+            V::new(position.x.abs() % 8., position.y, position.z),
+            V::new(1.5, 18.5, -25.),
+            V::new(6.5, 20., 25.),
         ),
     );
 
@@ -106,7 +97,7 @@ fn query_database(position: V) -> (Hit, f32) {
         hit = Hit::Wall;
     }
 
-    let sun = f32::from(19.9) - position.y;
+    let sun = (19.9) - position.y;
     if sun < distance {
         distance = sun;
         hit = Hit::Sun;
@@ -132,10 +123,10 @@ fn ray_marching(origin: V, direction: V) -> (Hit, V, V) {
             false
         };
         if rayhit || no_hit_count > 99 {
-            let (_, nx) = query_database(pos + V::from((0.01, 0.0, 0.0)));
-            let (_, ny) = query_database(pos + V::from((0.0, 0.01, 0.0)));
-            let (_, nz) = query_database(pos + V::from((0.0, 0.0, 0.01)));
-            return (hit, pos, !V::from((nx - d, ny - d, nz - d)));
+            let (_, nx) = query_database(pos + V::new(0.01, 0.0, 0.0));
+            let (_, ny) = query_database(pos + V::new(0.0, 0.01, 0.0));
+            let (_, nz) = query_database(pos + V::new(0.0, 0.0, 0.01));
+            return (hit, pos, !V::new(nx - d, ny - d, nz - d));
         }
 
         total_d += d;
@@ -148,7 +139,7 @@ fn trace(origin: V, direction: V) -> V {
     const BOUNCES: u32 = 3;
     let mut direction = direction;
     let mut origin = origin;
-    let light_direction = !V::from((0.6, 0.6, 1.0));
+    let light_direction = !V::new(0.6, 0.6, 1.0);
     let mut attenuation = V::from(1.0);
     let mut color = V::default();
 
@@ -164,18 +155,15 @@ fn trace(origin: V, direction: V) -> V {
             }
             Hit::Wall => {
                 let incidence = normal % light_direction;
-                let p = 6.283185 * random_val();
+                let p = 6.283_185 * random_val();
                 let c = random_val();
                 let s = (1.0 - c).sqrt();
                 let g = normal.z.signum();
-                let u = f32::from(-1.0) / (g + normal.z);
+                let u = -1.0 / (g + normal.z);
                 let v = normal.x * normal.y * u;
-                direction = V::from((v, g + normal.y * normal.y * u, -normal.y)) * (p.cos() * s)
-                    + V::from((
-                        f32::from(1.0) + g * normal.x * normal.x * u,
-                        g * v,
-                        -g * normal.x,
-                    )) * (p.sin() * s)
+                direction = V::new(v, g + normal.y * normal.y * u, -normal.y) * (p.cos() * s)
+                    + V::new(1.0 + g * normal.x * normal.x * u, g * v, -g * normal.x)
+                        * (p.sin() * s)
                     + normal * c.sqrt();
                 origin = sampled_position + direction * 0.1;
                 attenuation = attenuation * 0.2;
@@ -183,12 +171,12 @@ fn trace(origin: V, direction: V) -> V {
                     let (h, _p, _n) =
                         ray_marching(sampled_position + normal * 0.1, light_direction);
                     if h == Hit::Sun {
-                        color = color + attenuation * V::from((500., 400., 100.)) * incidence;
+                        color = color + attenuation * V::new(500., 400., 100.) * incidence;
                     }
                 }
             }
             Hit::Sun => {
-                color = color + attenuation * V::from((50., 80., 100.));
+                color = color + attenuation * V::new(50., 80., 100.);
                 break;
             }
         }
@@ -199,54 +187,62 @@ fn trace(origin: V, direction: V) -> V {
 
 const W: i32 = 960;
 const H: i32 = 540;
-const SAMPLES_COUNT: u32 = 16;
+const SAMPLES_COUNT: u32 = 64;
 const POSITION: V = V::new(-22., 5., 25.);
 
-fn pixel(x: i32, y: i32, goal: V, left: V, up: V) -> [u8; 3] {
-    let mut color = V::default();
+fn sample(x: i32, y: i32, pos: V, goal: V, left: V, up: V) -> V {
+    trace(
+        pos,
+        !(goal
+            + left * ((x - W / 2) as f32 + random_val())
+            + up * ((y - H / 2) as f32 + random_val())),
+    )
+}
 
-    for _ in 0..SAMPLES_COUNT {
-        color = color
-            + trace(
-                POSITION,
-                !(goal
-                    + left * ((x - W / 2) as f32 + random_val())
-                    + up * ((y - H / 2) as f32 + random_val())),
-            );
-    }
+// Reinhard tone mapping
+fn tone_map(samples: u32, color: V) -> [u8; 3] {
+    let mut color = color;
 
-    //eprintln!("x {} y {} color {:?}", x, y, color);
-
-    color = color * (1. / (SAMPLES_COUNT as f32)) + 14. / 241.;
+    color = color * (1. / (samples as f32)) + 14. / 241.;
     let o = color + 1.0;
-    let color = V::from((color.x / o.x, color.y / o.y, color.z * o.z)) * 255.0;
+    let color = V::new(color.x / o.x, color.y / o.y, color.z * o.z) * 255.0;
 
     [color.x as u8, color.y as u8, color.z as u8]
 }
 
-fn main() {
-    let goal = !(V::new(-3., 4., 0.) + POSITION * -1.0);
-    let left = !V::from((goal.z, 0.0, -goal.x)) * (1.0 / (W as f32));
+fn pixel(x: i32, y: i32, pos: V, goal: V, left: V, up: V) -> [u8; 3] {
+    let col = (0..SAMPLES_COUNT)
+        .into_par_iter()
+        .map(|_| sample(x, y, pos, goal, left, up))
+        .reduce(V::default, |state, new| state + new);
 
-    let up = V::from((
+    tone_map(SAMPLES_COUNT, col)
+}
+
+fn main() {
+    // These are really constants, but Rust constfn can't deal with them yet.
+    let goal = !(V::new(-3., 4., 0.) + POSITION * -1.0);
+    let left = !V::new(goal.z, 0.0, -goal.x) * (1.0 / (W as f32));
+    // Cross-product to get the up vector
+    let up = V::new(
         goal.y * left.z - goal.z * left.y,
         goal.z * left.x - goal.x * left.z,
         goal.x * left.y - goal.y * left.x,
-    ));
-
-    print!("P6 {} {} 255 ", W, H);
+    );
 
     let stdout = io::stdout();
     let mut handle = BufWriter::new(stdout.lock());
+
+    let _ = write!(handle, "P6 {} {} 255 ", W, H);
 
     let coords = (0..H)
         .into_par_iter()
         .flat_map(|y| (0..W).into_par_iter().map(move |x| (W - x, H - y)));
     let pixels: Vec<_> = coords
-        .map(move |(x, y)| pixel(x, y, goal, left, up))
+        .map(move |(x, y)| pixel(x, y, POSITION, goal, left, up))
         .collect();
 
     for pix in pixels {
         let _ = handle.write(&pix);
     }
-}
+} // Andrew Kensler
