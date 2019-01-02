@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Jeremy Fitzhardinge <jeremy@goop.org>"]
 edition = "2018"
 
+[features]
+vec-simd = []
+
 [dependencies]
 rand = "0.6.1"
 rayon = "1.0.3"

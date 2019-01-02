@@ -25,8 +25,8 @@ fn random_val() -> f32 {
 }
 
 fn box_test(position: V, lower_left: V, upper_right: V) -> f32 {
-    let lower_left = position + lower_left * -1.0;
-    let upper_right = upper_right + position * -1.0;
+    let lower_left = position - lower_left;
+    let upper_right = upper_right - position;
     -min(
         min(
             min(lower_left.x(), upper_right.x()),
@@ -68,9 +68,10 @@ fn query_database(position: V) -> (Hit, f32) {
                 V::from((l(chunk[2]), l(chunk[3]))) * 0.5,
             )
         })
-        .map(|(begin, end)| (begin, end + begin * -1.0))
-        .map(|(begin, e)| {
-            let o = f + (begin + e * min(-min((begin + f * -1.0) % e / (e % e), 0.0), 1.0)) * -1.0;
+        .map(|(begin, end)| (begin, end - begin))
+        .map(|(begin, end)| {
+            let o =
+                f - (begin + end * min(-min((begin - f) % end * (end % end).recip(), 0.0), 1.0));
             o % o
         })
         .fold(f32::MAX, min)
@@ -78,18 +79,18 @@ fn query_database(position: V) -> (Hit, f32) {
 
     let curves = &[V::from((-11., 6.)), V::from((11., 6.))];
     for c in curves {
-        let mut o = f + *c * -1.0;
+        let mut o = f - *c;
         distance = min(
             distance,
             if o.x() > 0.0 {
                 ((o % o).sqrt() - 2.0).abs()
             } else {
-                *o.y_mut() += if o.y() > 0.0 { -2.0 } else { 2.0 };
+                o += V::new(0.0, o.y().signum() * -2.0, 0.0);
                 (o % o).sqrt()
             },
         );
     }
-    distance = (distance.powf(8.0) + position.z().powf(8.0)).powf(0.125) - 0.5;
+    let mut distance = (distance.powf(8.0) + position.z().powf(8.0)).powf(0.125) - 0.5;
     let mut hit = Hit::Letter;
 
     let roomdist = min(
@@ -202,8 +203,7 @@ fn trace(origin: V, direction: V) -> V {
 
 const W: i32 = 960;
 const H: i32 = 540;
-const SAMPLES: u32 = 1024;
-const POSITION: V = V::new(-22., 5., 25.);
+const SAMPLES: u32 = 4;
 
 fn sample(x: i32, y: i32, pos: V, goal: V, left: V, up: V) -> V {
     trace(
@@ -233,7 +233,8 @@ fn coords() -> impl ParallelIterator<Item = (i32, i32)> {
 
 fn main() {
     // These are really constants, but Rust constfn can't deal with them yet.
-    let goal = !(V::new(-3., 4., 0.) + POSITION * -1.0);
+    let position: V = V::new(-22., 5., 25.);
+    let goal = !(V::new(-3., 4., 0.) - position);
     let left = !V::new(goal.z(), 0.0, -goal.x()) * (1.0 / (W as f32));
     // Cross-product to get the up vector
     let up = goal.cross(left);
@@ -243,7 +244,7 @@ fn main() {
     let start = Instant::now();
     for s in 1..=SAMPLES {
         let pixels: Vec<_> = coords()
-            .map(move |(x, y)| sample(x, y, POSITION, goal, left, up))
+            .map(move |(x, y)| sample(x, y, position, goal, left, up))
             .collect();
 
         frame.par_iter_mut().zip(pixels).for_each(|(f, p)| *f += p);
