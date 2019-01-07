@@ -81,7 +81,7 @@ impl From<(f32, f32)> for V {
 
 impl Default for V {
     fn default() -> V {
-        V::from(0.)
+        V (unsafe { _mm_setzero_ps() })
     }
 }
 

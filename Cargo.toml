@@ -8,8 +8,9 @@ edition = "2018"
 vec-simd = []
 
 [dependencies]
-rand = "0.6.1"
+rand = "0.6.3"
 rayon = "1.0.3"
+lazy_static = "1.2.0"
 
 [profile.release]
 debug = true

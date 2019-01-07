@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::time::Instant;
 
+use lazy_static::lazy_static;
 use rayon::prelude::*;
 
 mod vec;
@@ -47,31 +48,36 @@ enum Hit {
 fn query_database(position: V) -> (Hit, f32) {
     let f = V::new(position.x(), position.y(), 0.0);
 
-    const LETTERS: &str = concat!(
-        "5O5_", "5W9W", "5_9_", // P (without curve)
-        "AOEO", "COC_", "A_E_", // I
-        "IOQ_", "I_QO", // X
-        "UOY_", "Y_]O", "WW[W", // A
-        "aOa_", "aWeW", "a_e_", "cWiO" // R (without curve)
-    );
-
-    fn l(v: u8) -> f32 {
-        f32::from(v) - 79.0
-    }
-
-    let mut distance = LETTERS
+    lazy_static! {
+        static ref LETTERS: Vec<(V, V, f32)> = concat!(
+            "5O5_", "5W9W", "5_9_", // P (without curve)
+            "AOEO", "COC_", "A_E_", // I
+            "IOQ_", "I_QO", // X
+            "UOY_", "Y_]O", "WW[W", // A
+            "aOa_", "aWeW", "a_e_", "cWiO" // R (without curve)
+        )
         .as_bytes()
         .chunks_exact(4)
         .map(|chunk| {
+            let l = |v| f32::from(v) - 79.0;
             (
                 V::from((l(chunk[0]), l(chunk[1]))) * 0.5,
                 V::from((l(chunk[2]), l(chunk[3]))) * 0.5,
             )
         })
-        .map(|(begin, end)| (begin, end - begin))
-        .map(|(begin, end)| {
+        .map(|(begin, end)|{
+            let end = end - begin;
+            (begin, end, (end % end).recip())
+        })
+        .collect();
+    }
+
+    let mut distance = LETTERS
+        .iter()
+        .cloned()
+        .map(|(begin, end, endendrecip)| {
             let o =
-                f - (begin + end * min(-min((begin - f) % end * (end % end).recip(), 0.0), 1.0));
+                f - (begin + end * min(-min((begin - f) % end * endendrecip, 0.0), 1.0));
             o % o
         })
         .fold(f32::MAX, min)
