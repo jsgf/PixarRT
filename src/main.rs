@@ -239,7 +239,7 @@ fn coords() -> impl ParallelIterator<Item = (i32, i32)> {
 
 fn main() {
     // These are really constants, but Rust constfn can't deal with them yet.
-    let position: V = V::new(-22., 5., 25.);
+    let position = V::new(-22., 5., 25.);
     let goal = !(V::new(-3., 4., 0.) - position);
     let left = !V::new(goal.z(), 0.0, -goal.x()) * (1.0 / (W as f32));
     // Cross-product to get the up vector
