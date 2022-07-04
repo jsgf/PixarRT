@@ -2,14 +2,30 @@
 
 use std::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 
-#[cfg(all(feature = "vec-simd", target_arch = "x86_64", any(target_feature = "avx", target_feature = "sse4.1")))]
+#[cfg(all(
+    feature = "vec-simd",
+    target_arch = "x86_64",
+    any(target_feature = "avx", target_feature = "sse4.1")
+))]
 mod vec_x86_64_simd;
-#[cfg(all(feature = "vec-simd", target_arch = "x86_64", any(target_feature = "avx", target_feature = "sse4.1")))]
+#[cfg(all(
+    feature = "vec-simd",
+    target_arch = "x86_64",
+    any(target_feature = "avx", target_feature = "sse4.1")
+))]
 use self::vec_x86_64_simd as arch;
 
-#[cfg(not(all(feature = "vec-simd", target_arch = "x86_64", any(target_feature = "avx", target_feature = "sse4.1"))))]
+#[cfg(not(all(
+    feature = "vec-simd",
+    target_arch = "x86_64",
+    any(target_feature = "avx", target_feature = "sse4.1")
+)))]
 mod vec_portable;
-#[cfg(not(all(feature = "vec-simd", target_arch = "x86_64", any(target_feature = "avx", target_feature = "sse4.1"))))]
+#[cfg(not(all(
+    feature = "vec-simd",
+    target_arch = "x86_64",
+    any(target_feature = "avx", target_feature = "sse4.1")
+)))]
 use self::vec_portable as arch;
 
 pub use self::arch::V;

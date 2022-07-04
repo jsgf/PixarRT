@@ -8,11 +8,11 @@ edition = "2018"
 vec-simd = []
 
 [dependencies]
-rand = "0.6.3"
-rayon = "1.0.3"
-lazy_static = "1.2.0"
+rand = "0.8"
+rayon = "1.1.0"
+lazy_static = "1.3.0"
 
 [profile.release]
 debug = true
-# LTO seems much *slower*
-#lto = true
+# LTO may be *slower*
+lto = true

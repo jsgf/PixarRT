@@ -1,5 +1,7 @@
-use std::arch::x86_64::*;
-use std::ops::{Add, Mul, Sub, Not, Rem};
+use std::{
+    arch::x86_64::*,
+    ops::{Add, Mul, Not, Rem, Sub},
+};
 
 // layout:
 // | 0.0 | x | y | z |
@@ -81,7 +83,7 @@ impl From<(f32, f32)> for V {
 
 impl Default for V {
     fn default() -> V {
-        V (unsafe { _mm_setzero_ps() })
+        V(unsafe { _mm_setzero_ps() })
     }
 }
 

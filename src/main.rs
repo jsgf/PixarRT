@@ -1,9 +1,11 @@
 #![warn(clippy::all)]
 
-use std::f32;
-use std::fs::File;
-use std::io::{BufWriter, Write};
-use std::time::Instant;
+use std::{
+    f32,
+    fs::File,
+    io::{BufWriter, Write},
+    time::Instant,
+};
 
 use lazy_static::lazy_static;
 use rayon::prelude::*;
@@ -76,8 +78,7 @@ fn query_database(position: V) -> (Hit, f32) {
         .iter()
         .cloned()
         .map(|(begin, end, endendrecip)| {
-            let o =
-                f - (begin + end * min(-min((begin - f) % end * endendrecip, 0.0), 1.0));
+            let o = f - (begin + end * min(-min((begin - f) % end * endendrecip, 0.0), 1.0));
             o % o
         })
         .fold(f32::MAX, min)
@@ -209,7 +210,7 @@ fn trace(origin: V, direction: V) -> V {
 
 const W: i32 = 960;
 const H: i32 = 540;
-const SAMPLES: u32 = 4;
+const SAMPLES: u32 = 512;
 
 fn sample(x: i32, y: i32, pos: V, goal: V, left: V, up: V) -> V {
     trace(
@@ -256,12 +257,12 @@ fn main() {
         frame.par_iter_mut().zip(pixels).for_each(|(f, p)| *f += p);
 
         if s.is_power_of_two() {
-            let file = File::create(format!("out-{}.ppm", s)).expect("create failed");
+            let file = File::create(format!("out-{s}.ppm")).expect("create failed");
             let mut handle = BufWriter::new(file);
 
-            println!("Sample {} took {:?}", s, start.elapsed());
+            println!("Sample {s} took {:?}", start.elapsed());
 
-            let _ = write!(handle, "P6 {} {} 255 ", W, H);
+            let _ = write!(handle, "P6 {W} {H} 255 ");
 
             for pix in frame.iter().map(|pix| tone_map(s, *pix)) {
                 let _ = handle.write(&pix);
